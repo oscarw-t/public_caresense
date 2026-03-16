@@ -11,6 +11,7 @@ cors:
   origins:
     - "http://localhost:5173"
     - "http://127.0.0.1:5173"
+    - "http://34.147.248.96:5173"
 dialogue:
   default_quick_options: ["Yes", "No", "Not sure", "Probably", "Probably not"]
   first_question: "What is your main symptom right now?"
