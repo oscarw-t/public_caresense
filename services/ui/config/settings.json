@@ -1,0 +1,23 @@
+{
+  "api": {
+    "llm_extraction_url": "http://localhost:8000/api/v1/next-step"
+  },
+  "content": {
+    "app_title": "Care Sense",
+    "app_subtitle": "Akinator-style guided diagnosis (UI MVP)",
+    "welcome_message": "I’m Dr. Genie. I’ll ask questions step-by-step like Akinator. Tell me what’s going on.",
+    "first_question": "What’s your main symptom right now? (e.g., sore throat, headache, stomach pain)",
+    "initial_quick_options": [
+      "Fever / high temperature",
+      "Cough",
+      "Sore throat",
+      "Headache",
+      "Stomach pain",
+      "Other (I’ll type)"
+    ]
+  },
+  "moods": {
+    "loading": "Mixing magic + medicine...",
+    "ready": "Ready to diagnose!"
+  }
+}
