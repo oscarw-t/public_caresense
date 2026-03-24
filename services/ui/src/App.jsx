@@ -18,11 +18,10 @@ export default function App() {
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-
   const [selectedQuick, setSelectedQuick] = useState(null);
-  
   const [sessionId, setSessionId] = useState(null);
   const [top10, setTop10] = useState([]);
+  const [diagnosis, setDiagnosis] = useState(null); // set when session ends
 
   const chatEndRef = useRef(null);
 
@@ -44,17 +43,19 @@ export default function App() {
     setLoading(true);
 
     try {
-      const next = await getNextStepAPI({
-        sessionId,
-        answer: answerText
-      });
+      const next = await getNextStepAPI({ sessionId, answer: answerText });
 
       if (next.sessionId) setSessionId(next.sessionId);
       if (next.top10) setTop10(next.top10);
 
       if (next.nextQuestionId === "done") {
-        setCurrent({ id: "done", text: next.nextQuestionText });
+        setCurrent({ id: "done", text: "Diagnosis complete." });
         setQuickOptions([]);
+        setDiagnosis({
+          disease: next.top10?.[0]?.disease || "",
+          explanation: next.explanation || "",
+          recommendedTests: next.recommendedTests || "",
+        });
         if (next.assistantNote) {
           setChat((prev) => [...prev, { role: "assistant", text: next.assistantNote }]);
         }
@@ -78,6 +79,22 @@ export default function App() {
     }
   }
 
+  async function resetSession() {
+    try {
+      await fetch(settings.api.reset_url, { method: "POST" });
+    } catch (err) {
+      console.error("Reset failed:", err);
+    }
+    setChat([{ role: "assistant", text: settings.content.welcome_message }]);
+    setCurrent({ id: "q0", text: settings.content.first_question });
+    setQuickOptions(settings.content.initial_quick_options);
+    setInput("");
+    setSessionId(null);
+    setTop10([]);
+    setSelectedQuick(null);
+    setDiagnosis(null);
+  }
+
   return (
     <div style={styles.page}>
       <div style={styles.left}>
@@ -94,14 +111,11 @@ export default function App() {
         <div style={styles.characterArea}>
           <div style={styles.characterCard}>
             <img
-              src="/doctor-genie.png"
+              src={settings.ui.doctor_genie_img}
               alt="Doctor Genie"
               style={styles.characterImg}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
             />
-
             <div style={styles.characterMeta}>
               <div style={styles.characterName}>Dr. Genie</div>
               <div style={styles.characterMood}>
@@ -115,13 +129,12 @@ export default function App() {
               <div style={styles.bubbleLabel}>Question</div>
               <div style={styles.bubbleText}>{current.text}</div>
 
-              {/* Top 10 results */}
+              {/* Live top 10 ranking */}
               {top10?.length > 0 && (
                 <div style={{ marginTop: 14 }}>
                   <div style={{ fontWeight: 800, marginBottom: 8 }}>Top conditions</div>
-
                   <div style={{ display: "grid", gap: 8 }}>
-                    {top10.slice(0, 10).map((r, i) => (
+                    {top10.slice(0, settings.ui.max_top_diseases).map((r, i) => (
                       <div
                         key={r.disease}
                         style={{
@@ -129,14 +142,12 @@ export default function App() {
                           justifyContent: "space-between",
                           padding: "10px 12px",
                           borderRadius: 12,
-                          background: "#f3f4f6",   // darker card
-                          color: "#111827", 
+                          background: "#f3f4f6",
+                          color: "#111827",
                           fontSize: 14
                         }}
                       >
-                        <div style={{ fontWeight: 700 }}>
-                          {i + 1}. {r.disease}
-                        </div>
+                        <div style={{ fontWeight: 700 }}>{i + 1}. {r.disease}</div>
                         <div style={{ color: "#6b7280" }}>{Number(r.score).toFixed(3)}</div>
                       </div>
                     ))}
@@ -144,50 +155,88 @@ export default function App() {
                 </div>
               )}
 
-              <div style={styles.akinatorRow}>
-  {["Yes", "No", "Not sure", "Probably", "Probably not"].map((opt) => (
-    <button
-      key={opt}
-      disabled={loading}
-      onClick={() => {
-        setSelectedQuick(opt);
-        sendAnswer(opt);
-      }}
-      style={{
-        ...styles.akinatorBtn,
-        ...(selectedQuick === opt ? styles.akinatorBtnActive : {}),
-        ...(opt === "Yes" ? styles.btnYes : {}),
-        ...(opt === "No" ? styles.btnNo : {}),
-        ...(opt.includes("Not") ? styles.btnMaybe : {})
-      }}
-    >
-      <span style={styles.btnIcon}>
-        {opt === "Yes" ? "✅" : opt === "No" ? "❌" : opt === "Not sure" ? "❓" : "✨"}
-      </span>
-      <span>{opt}</span>
-    </button>
-  ))}
-</div>
+              {/* Diagnosis card — shown when stopping condition is hit */}
+              {diagnosis && (
+                <div style={styles.diagnosisCard}>
+                  <div style={styles.diagnosisHeader}>
+                    <span style={styles.diagnosisIcon}>🩺</span>
+                    <div>
+                      <div style={styles.diagnosisTitle}>Top diagnosis: {diagnosis.disease}</div>
+                      <div style={styles.diagnosisSubtitle}>Based on your reported symptoms</div>
+                    </div>
+                  </div>
 
-              <div style={styles.inputRow}>
-                <input
-                  style={styles.input}
-                  value={input}
-                  disabled={loading}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type your answer (details help)…"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") sendAnswer(input);
-                  }}
-                />
-                <button style={styles.sendBtn} disabled={loading} onClick={() => sendAnswer(input)}>
-                  {loading ? "…" : "Send"}
+                  {diagnosis.explanation && (
+                    <div style={styles.diagnosisSection}>
+                      <div style={styles.diagnosisSectionLabel}>Why this condition?</div>
+                      <p style={styles.diagnosisSectionText}>{diagnosis.explanation}</p>
+                    </div>
+                  )}
+
+                  {diagnosis.recommendedTests && (
+                    <div style={styles.diagnosisSection}>
+                      <div style={styles.diagnosisSectionLabel}>Recommended tests</div>
+                      <p style={styles.diagnosisSectionText}>{diagnosis.recommendedTests}</p>
+                    </div>
+                  )}
+
+                  <div style={styles.diagnosisDisclaimer}>
+                    ⚠️ This is not a medical diagnosis. Please consult a qualified healthcare professional.
+                  </div>
+                </div>
+              )}
+
+              {/* Yes / No / Not sure buttons — hidden once done */}
+              {!diagnosis && (
+                <div style={styles.akinatorRow}>
+                  {settings.ui.default_akinator_options.map((opt) => (
+                    <button
+                      key={opt}
+                      disabled={loading}
+                      onClick={() => { setSelectedQuick(opt); sendAnswer(opt); }}
+                      style={{
+                        ...styles.akinatorBtn,
+                        ...(selectedQuick === opt ? styles.akinatorBtnActive : {}),
+                        ...(opt === "Yes" ? styles.btnYes : {}),
+                        ...(opt === "No" ? styles.btnNo : {}),
+                        ...(opt === "Not sure" ? styles.btnMaybe : {})
+                      }}
+                    >
+                      <span style={styles.btnIcon}>{settings.ui.option_icons[opt]}</span>
+                      <span>{opt}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Free-text input — hidden once done */}
+              {!diagnosis && (
+                <div style={styles.inputRow}>
+                  <input
+                    style={styles.input}
+                    value={input}
+                    disabled={loading}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Type your answer (details help)…"
+                    onKeyDown={(e) => { if (e.key === "Enter") sendAnswer(input); }}
+                  />
+                  <button style={styles.sendBtn} disabled={loading} onClick={() => sendAnswer(input)}>
+                    {loading ? "…" : "Send"}
+                  </button>
+                </div>
+              )}
+
+              <div style={{ marginTop: 12, textAlign: "right" }}>
+                <button onClick={resetSession} disabled={loading} style={styles.resetBtn}>
+                  Restart
                 </button>
               </div>
 
-              <div style={styles.microNote}>
-                Not limited to yes/no — you can type full answers, and later your logic chooses the next best question.
-              </div>
+              {!diagnosis && (
+                <div style={styles.microNote}>
+                  Not limited to yes/no — you can type full answers, and the system chooses the next best question.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -196,9 +245,8 @@ export default function App() {
       <div style={styles.right}>
         <div style={styles.chatHeader}>
           <div style={styles.chatTitle}>History</div>
-          <div style={styles.chatHint}>Questions + your answers (like Akinator log)</div>
+          <div style={styles.chatHint}>Questions + your answers</div>
         </div>
-
         <div style={styles.chatBody}>
           {chat.map((m, idx) => (
             <ChatBubble key={idx} role={m.role} text={m.text} />
@@ -225,12 +273,10 @@ async function getNextStepAPI(payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
-
   if (!res.ok) {
     const txt = await res.text();
     throw new Error("Backend error: " + res.status + " " + txt);
   }
-
   return await res.json();
 }
 
@@ -244,60 +290,6 @@ const styles = {
     background: "linear-gradient(135deg, #fdfbfb, #ebedee)",
     fontFamily: "system-ui"
   },
-akinatorRow: {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 12,
-  marginTop: 18
-},
-
-akinatorBtn: {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  padding: "12px 14px",
-  borderRadius: 999,
-  border: "1px solid rgba(0,0,0,0.12)",
-  background: "linear-gradient(180deg, #ffffff, #f3f4f6)",
-  boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
-  cursor: "pointer",
-  fontWeight: 900,
-  fontSize: 14,
-  transition: "transform 0.06s ease, box-shadow 0.15s ease",
-  userSelect: "none",
-  color: "#111827"
-},
-
-akinatorBtnActive: {
-  transform: "translateY(-1px)",
-  boxShadow: "0 10px 24px rgba(0,0,0,0.14)",
-  border: "1px solid rgba(79,70,229,0.35)"
-},
-
-btnIcon: {
-  width: 28,
-  height: 28,
-  borderRadius: 999,
-  display: "grid",
-  placeItems: "center",
-  background: "rgba(79,70,229,0.10)"
-},
-
-btnYes: {
-  background: "linear-gradient(180deg, rgba(16,185,129,0.22), #ffffff)",
-  border: "1px solid rgba(16,185,129,0.35)"
-},
-
-btnNo: {
-  background: "linear-gradient(180deg, rgba(239,68,68,0.22), #ffffff)",
-  border: "1px solid rgba(239,68,68,0.35)"
-},
-
-btnMaybe: {
-  background: "linear-gradient(180deg, rgba(59,130,246,0.18), #ffffff)",
-  border: "1px solid rgba(59,130,246,0.30)"
-},
-
   left: { background: "transparent", borderRadius: 16, display: "flex", flexDirection: "column" },
   header: { marginBottom: 10 },
   brand: { display: "flex", gap: 10, alignItems: "center" },
@@ -319,9 +311,6 @@ btnMaybe: {
     position: "sticky",
     top: 18
   },
-  characterCardInner: {
-    padding: 14
-  },
   characterImg: {
     width: "100%",
     height: 320,
@@ -334,11 +323,11 @@ btnMaybe: {
   characterMood: { color: "#6b7280", marginTop: 3 },
   bubbleWrap: { minHeight: 300 },
   bubble: {
-      background: "linear-gradient(180deg, #ffffff, #f8fafc)",
-      borderRadius: 18,
-      boxShadow: "0 18px 60px rgba(0,0,0,0.12)",
-      padding: 18,
-      border: "1px solid rgba(0,0,0,0.08)"
+    background: "linear-gradient(180deg, #ffffff, #f8fafc)",
+    borderRadius: 18,
+    boxShadow: "0 18px 60px rgba(0,0,0,0.12)",
+    padding: 18,
+    border: "1px solid rgba(0,0,0,0.08)"
   },
   bubbleLabel: {
     fontSize: 12,
@@ -348,14 +337,47 @@ btnMaybe: {
     textTransform: "uppercase"
   },
   bubbleText: { marginTop: 8, fontSize: 18, fontWeight: 750, color: "#111827" },
-  quickRow: { display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 },
-  quickBtn: {
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(0,0,0,0.10)",
-    background: "rgba(79,70,229,0.08)",
+  akinatorRow: { display: "flex", flexWrap: "wrap", gap: 12, marginTop: 18 },
+  akinatorBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "12px 14px",
+    borderRadius: 999,
+    border: "1px solid rgba(0,0,0,0.12)",
+    background: "linear-gradient(180deg, #ffffff, #f3f4f6)",
+    boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
     cursor: "pointer",
-    fontWeight: 700
+    fontWeight: 900,
+    fontSize: 14,
+    transition: "transform 0.06s ease, box-shadow 0.15s ease",
+    userSelect: "none",
+    color: "#111827"
+  },
+  akinatorBtnActive: {
+    transform: "translateY(-1px)",
+    boxShadow: "0 10px 24px rgba(0,0,0,0.14)",
+    border: "1px solid rgba(79,70,229,0.35)"
+  },
+  btnIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    display: "grid",
+    placeItems: "center",
+    background: "rgba(79,70,229,0.10)"
+  },
+  btnYes: {
+    background: "linear-gradient(180deg, rgba(16,185,129,0.22), #ffffff)",
+    border: "1px solid rgba(16,185,129,0.35)"
+  },
+  btnNo: {
+    background: "linear-gradient(180deg, rgba(239,68,68,0.22), #ffffff)",
+    border: "1px solid rgba(239,68,68,0.35)"
+  },
+  btnMaybe: {
+    background: "linear-gradient(180deg, rgba(59,130,246,0.18), #ffffff)",
+    border: "1px solid rgba(59,130,246,0.30)"
   },
   inputRow: { display: "flex", gap: 10, marginTop: 14 },
   input: {
@@ -375,7 +397,46 @@ btnMaybe: {
     fontWeight: 800,
     cursor: "pointer"
   },
+  resetBtn: {
+    padding: "11px 14px",
+    borderRadius: 12,
+    border: "none",
+    background: "#4f46e5",
+    color: "white",
+    fontWeight: 800,
+    cursor: "pointer"
+  },
   microNote: { marginTop: 12, color: "#6b7280", fontSize: 12, lineHeight: 1.35 },
+  diagnosisCard: {
+    marginTop: 18,
+    borderRadius: 16,
+    border: "1.5px solid rgba(16,185,129,0.35)",
+    background: "linear-gradient(135deg, rgba(16,185,129,0.07), rgba(255,255,255,0.95))",
+    padding: 18,
+    boxShadow: "0 8px 28px rgba(16,185,129,0.10)"
+  },
+  diagnosisHeader: { display: "flex", alignItems: "center", gap: 12, marginBottom: 14 },
+  diagnosisIcon: { fontSize: 28 },
+  diagnosisTitle: { fontWeight: 900, fontSize: 17, color: "#065f46" },
+  diagnosisSubtitle: { fontSize: 12, color: "#6b7280", marginTop: 2 },
+  diagnosisSection: { marginBottom: 12 },
+  diagnosisSectionLabel: {
+    fontSize: 11,
+    fontWeight: 800,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    color: "#6b7280",
+    marginBottom: 4
+  },
+  diagnosisSectionText: { fontSize: 14, color: "#111827", lineHeight: 1.55, margin: 0 },
+  diagnosisDisclaimer: {
+    marginTop: 14,
+    fontSize: 12,
+    color: "#9ca3af",
+    borderTop: "1px solid rgba(0,0,0,0.07)",
+    paddingTop: 10,
+    lineHeight: 1.4
+  },
   right: {
     background: "white",
     borderRadius: 16,

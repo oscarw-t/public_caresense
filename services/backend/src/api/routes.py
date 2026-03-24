@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request
 import numpy as np
 from src.services.scoring import scoreDiseases, suggestSymptoms
 from src.utils.config_loader import settings
+from src.utils.data_loader import load_data
 
 router = APIRouter()
 
@@ -78,7 +79,7 @@ async def next_symptom(request: Request):
     if recommendations:
         next_symptom_name = recommendations[0]
         last_suggested_symptom = next_symptom_name
-        next_question_text = f"{next_symptom_name}?"
+        next_question_text = f"Do you have {next_symptom_name}?"
         next_question_id = next_symptom_name
     else:
         next_question_text = "Diagnosis complete."
@@ -104,7 +105,19 @@ async def next_symptom(request: Request):
         "quickOptions": quick_opts,
         "assistantNote": None,
         "end": end,
+        "diagnosed": not question_count >= settings['logic']['max_questions_asked'],
         "presentSymptoms": list(symptoms) if end else [],
         "absentSymptoms": list(nonsymptoms) if end else [],
         "unconfirmedSymptoms": list(unconfirmed_symptoms) if end else []
     }
+
+
+#resets beliefs and session
+@router.post("/reset")
+async def reset_beliefs(request: Request):
+    global beliefs
+    
+    probs, _priors, beliefs = load_data()
+    init_routes(probs, beliefs)
+
+    return {"status": "reset", "message": "Session reset successfully"}

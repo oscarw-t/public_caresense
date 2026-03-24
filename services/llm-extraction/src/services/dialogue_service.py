@@ -23,6 +23,6 @@ def pick_next_question_from_top10(
     for symptom in candidates:
         if symptom not in asked:
             asked.append(symptom)
-            return f"Do you have {symptom}?"
+            return settings['dialogue']['question_template'].format(symptom=symptom)
 
     return fallback_q

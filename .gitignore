@@ -25,6 +25,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+services/data_prep/credentials.json
+services/data_prep/.idea
 
 # Environment Variables
 .env

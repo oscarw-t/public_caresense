@@ -20,7 +20,7 @@ async def call_deduction_service(
         "choice": choice,
     }
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=settings['services']['timeout']) as client:
         url = settings['services']['deduction_url']
         response = await client.post(url, json=payload)
         response.raise_for_status()

@@ -3,19 +3,25 @@ server:
   port: 8000
 services:
   deduction_url: "http://backend:8888/api/next"
+  reset_url: "http://backend:8888/api/reset"
   timeout: 15.0
+session:
+  id_length: 6
 openai:
-  model: "gpt-5-nano"
+  model: "gpt-4.1-nano"
   api_key: "${OPENAI_API_KEY}"
 cors:
   origins:
     - "http://localhost:5173"
     - "http://127.0.0.1:5173"
-    - "http://34.147.248.96:5173"
 dialogue:
-  default_quick_options: ["Yes", "No", "Not sure", "Probably", "Probably not"]
+  default_quick_options: ["Yes", "No", "Not sure"]
   first_question: "What is your main symptom right now?"
   fallback_question: "Can you describe any other symptoms you have (even small ones)?"
+  question_template: "Do you have {symptom}?"
+  assistant_notes:
+    extracted: "Extracted symptoms: {symptoms}"
+    none: "No clear symptoms extracted yet."
   disease_mapping:
     flu: ["fever", "body aches", "fatigue", "chills"]
     covid: ["fever", "loss of taste", "loss of smell", "shortness of breath"]
@@ -25,4 +31,4 @@ dialogue:
 normalization:
   yes_set: ["yes", "y", "yeah", "yep", "present", "true", "✅"]
   no_set: ["no", "n", "nope", "absent", "false", "❌"]
-  maybe_set: ["not sure", "maybe", "unsure", "idk", "possibly", "probably", "probably not", "❓", "✨"]
+  maybe_set: ["not sure", "maybe", "unsure", "idk", "possibly", "❓"]

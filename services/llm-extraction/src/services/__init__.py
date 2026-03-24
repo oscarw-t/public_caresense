@@ -3,7 +3,6 @@
 from .deduction_service import call_deduction_service
 from .dialogue_service import pick_next_question_from_top10
 from .llm_service import (
-    get_disease_to_treatment,
     get_llm,
     get_symptom_to_question,
     llm_extract_symptoms,
@@ -12,7 +11,6 @@ from .llm_service import (
 
 __all__ = [
     "call_deduction_service",
-    "get_disease_to_treatment",
     "get_llm",
     "get_symptom_to_question",
     "llm_extract_symptoms",
