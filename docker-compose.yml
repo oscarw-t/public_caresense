@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   backend:
+    restart: always
     build: ./services/backend
     container_name: caresense-backend
     ports:
@@ -12,6 +13,7 @@ services:
       - caresense_network
 
   llm-extraction:
+    restart: always
     build: ./services/llm-extraction
     container_name: caresense-llm
     environment:
@@ -26,6 +28,7 @@ services:
       - caresense_network
 
   ui:
+    restart: always
     build: ./services/ui
     container_name: caresense-ui
     ports:
