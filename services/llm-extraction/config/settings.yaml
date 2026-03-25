@@ -12,7 +12,7 @@ openai:
   api_key: "${OPENAI_API_KEY}"
 cors:
   origins:
-    - "http://34.89.92.209:5173"
+    - "http://localhost:5173"
     - "http://127.0.0.1:5173"
 dialogue:
   default_quick_options: ["Yes", "No", "Not sure"]

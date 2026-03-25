@@ -11,4 +11,4 @@ Enter OpenAI API key ``OPENAI_API_KEY=sk-proj-DQ....`` in .env
 docker build -t llm-extraction .
 docker run -p 8000:8000 --env-file .env llm-extraction
 ```
-Open ``http:34.89.92.209:8000/docs`` to see routes
+Open ``http:localhost8000/docs`` to see routes

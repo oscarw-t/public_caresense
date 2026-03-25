@@ -1,7 +1,7 @@
 {
   "api": {
-    "llm_extraction_url": "http://34.89.92.209:8000/api/v1/next-step",
-    "reset_url": "http://34.89.92.209:8000/api/v1/reset"
+    "llm_extraction_url": "http://localhost:8000/api/v1/next-step",
+    "reset_url": "http://localhost:8000/api/v1/reset"
   },
   "content": {
     "app_title": "Care Sense",

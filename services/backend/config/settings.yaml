@@ -13,6 +13,6 @@ logic:
   n_top_diseases: 100 #number diseases compared for suggestion
   n_diseases_output: 10 #number of diseases returned to front end
   max_questions_asked: 25 #how long the dialogue can be
-  confidence_threshold: 0.5 #how confident before dialogue ends
+  confidence_threshold: 0.7 #how confident before dialogue ends
   default_session_id: "demo-session"
   quick_options: ["yes", "no", "maybe"]
